@@ -1,66 +1,71 @@
 import React from 'react';
 import {FlatList, Text, View, StyleSheet, TextInput} from 'react-native';
-import {getExchangeRates} from '../api';
+import { getExchangeRates } from '../api';
 import {Row} from './Row';
+
+import {connect} from 'react-redux'
+import {
+    updateExRates,
+    updateExSource,
+    updateExTarget,
+    updateExSourceToTarget,
+    updateExErrMessage
+} from '../redux/actions'; 
 
 class ExchangeRatesScreen extends React.Component {
 
-    state = {
-        rates: null,
-        source: '',
-        target: '',
-        sourceToTarget: 0,
-        errMessage: "..."
-    }
-
-    updateSourceExchangeRates = async () => {
-        if (this.state.source.length === 3) {
-            const sourceExchangeRates = await getExchangeRates(this.state.source);
-            this.setState({rates: sourceExchangeRates});
-            this.updateErrorMessage('Wrong currency code');
+    updateSourceExchangeRates = async (source) => {
+        if (source.length === 3) {
+            const sourceExchangeRates = await getExchangeRates(source);
+            this.props.updateExRates(sourceExchangeRates);
+            this.props.updateExErrMessage('Wrong currency code');
             return;
         }
-        this.setState({rates: null});
-        this.updateErrorMessage('Incomplete currency code');
+        this.props.updateExRates(null);
+        this.props.updateExErrMessage('Incomplete currency code');
     }
 
-    updateSourceToTargetExchangeRate = () => {
-        if (this.state.rates && this.state.target.length === 3) {
-            const sourceToTargetRate = this.findSourceToTarget()
-            this.setState({sourceToTarget: sourceToTargetRate});
+    updateSourceToTargetExchangeRate = (target) => {
+        if (this.props.rates && target.length === 3) {
+            const sourceToTargetRate = this.findSourceToTarget(target)
+            this.props.updateExSourceToTarget(sourceToTargetRate);
             return;
         }
-        this.setState({sourceToTarget: 0});
+        this.props.updateExSourceToTarget(0);
     }
 
-    updateErrorMessage = (errMessage) => this.setState({errMessage})
-
-    findSourceToTarget = () => {
-        const exRate = this.state.rates.find(rate => (rate.currency === this.state.target));
+    findSourceToTarget = (target) => {
+        const exRate = this.props.rates.find(
+            rate => (rate.currency === target)
+        );
         return exRate?exRate.rate:0;
     }
 
     onSourceCurrencyChange = (source) => {
-        if (source.length <= 3)
-            this.setState({source}, this.updateSourceExchangeRates)
+        if (source.length <= 3) {
+            this.props.updateExSource(source);
+            this.updateSourceExchangeRates(source);
+        }
     }
 
     onTargetCurrencyChange = (target) => {
-        if (target.length <= 3)
-            this.setState({target}, this.updateSourceToTargetExchangeRate)
+        if (target.length <= 3) {
+            this.props.updateExTarget(target);
+            this.updateSourceToTargetExchangeRate(target);
+        }
     }
 
     render() {
         return (
             <View style={styles.container}>
                 <SourceTargetCurrencyInput 
-                    source={this.state.source}
-                    target={this.state.target}
+                    source={this.props.source}
+                    target={this.props.target}
                     onSourceCurrencyChange={this.onSourceCurrencyChange}
                     onTargetCurrencyChange={this.onTargetCurrencyChange}
                 />
-                <PairedExchangeRate rate={this.state.sourceToTarget} /> 
-                <SourceExchangeRates {...this.state}/>
+                <PairedExchangeRate rate={this.props.sourceToTarget} /> 
+                <SourceExchangeRates {...this.props}/>
             </View>
         )
     }
@@ -155,4 +160,18 @@ const styles = StyleSheet.create({
 })
 
 
-export default ExchangeRatesScreen;
+const mapStateToProps = state => ({
+    rates: state.rates,
+    source: state.source,
+    target: state.target,
+    sourceToTarget: state.sourceToTarget,
+    errMessage: state.errMessage
+});
+const mapActionCreatorsToProps = {
+    updateExRates: updateExRates,
+    updateExSource: updateExSource,
+    updateExTarget: updateExTarget,
+    updateExSourceToTarget: updateExSourceToTarget,
+    updateExErrMessage: updateExErrMessage
+};
+export default connect(mapStateToProps, mapActionCreatorsToProps)(ExchangeRatesScreen);

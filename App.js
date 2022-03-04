@@ -5,6 +5,8 @@ import CalculatorScreen from './calculator/CalculatorScreen'
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import SettingsStack from './settings/SettingsScreen';
+import {Provider} from 'react-redux';
+import store from './redux/store';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 
@@ -12,6 +14,7 @@ const Tab = createBottomTabNavigator();
 
 export default function App() {
   return (
+    <Provider store={store}>
     <NavigationContainer>
       <Tab.Navigator>
         <Tab.Screen
@@ -54,6 +57,7 @@ export default function App() {
           />
       </Tab.Navigator>
     </NavigationContainer>
+    </Provider>
   );
 }
 

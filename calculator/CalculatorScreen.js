@@ -3,6 +3,13 @@ import {Text, View, StyleSheet} from 'react-native';
 import ButtonsRow from './CalculatorButtons';
 import { calculate } from './calculate';
 
+import { connect } from 'react-redux';
+import {
+    updateCalFirstOperand,
+    updateCalOperator,
+    updateCalSecondOperand
+} from '../redux/actions';
+
 
 const LIGHTGREY = {bgcolor: 'lightgrey', color: 'grey'}
 const GREY = {bgcolor: 'grey', color: 'white'}
@@ -10,58 +17,54 @@ const ORANGE = {bgcolor: 'orange', color: 'white'}
 
 
 class CalculatorScreen extends React.Component {
-    state = {
-        currentOperator: "",
-        firstOperand: "0",
-        secondOperand: ""
-    }
 
     onOperatorPress = (operator) => {
-        if (this.state.secondOperand) {
-            this.setState(
-                prevState => ({
-                    firstOperand: calculate(
-                        prevState.firstOperand, prevState.secondOperand, prevState.currentOperator
-                    ),
-                    secondOperand: "",
-                    currentOperator: operator,
-                })
-            )
+        if (this.props.secondOperand) {
+            const {firstOperand, secondOperand, currentOperator} = this.props;
+            this.props.updateCalFirstOperand(calculate(
+                        firstOperand, secondOperand, currentOperator
+            ))
+            this.props.updateCalSecondOperand("")
+            this.props.updateCalOperator(operator)
             return
         }
-        this.setState({currentOperator: operator})
+        this.props.updateCalOperator(operator)
     }
 
     isOperatorSelected = (operator) => {
-        return operator === this.state.currentOperator && !this.state.secondOperand;
+        return operator === this.props.currentOperator && !this.props.secondOperand;
     }
+
 
     onNumberPress = (operand) => {
-        this.setState(
-            prevState => {
-                if(!this.state.currentOperator) {
-                    if(prevState.firstOperand === "0")
-                        return {firstOperand: operand}
-                    else return {firstOperand: (prevState.firstOperand+operand).slice(0, 9)}
-                }
-                else {
-                    if(!prevState.secondOperand || prevState.secondOperand === "0")
-                        return {secondOperand: operand}
-                    else return {secondOperand: (prevState.secondOperand+operand).slice(0, 9)}
-                }
-            }
-        )
+        const {firstOperand, secondOperand} = this.props;
+        if(this.isOnFirstOperand()) {
+            if(firstOperand === "0")
+                return this.props.updateCalFirstOperand(operand);
+            else return this.props.updateCalFirstOperand((firstOperand+operand).slice(0, 9))
+        }
+        else {
+            if(!secondOperand || secondOperand === "0")
+                return this.props.updateCalSecondOperand(operand);
+            else return this.props.updateCalSecondOperand((secondOperand+operand).slice(0, 9));
+        }
     }
+
 
     onDecimalPress = () => {
-        const operand = (!this.state.currentOperator)?'firstOperand':'secondOperand';
-        this.addDecimal(operand);
+        const operandType = (!this.props.currentOperator)?'firstOperand':'secondOperand';
+        this.addDecimalIfPossible(operandType);
     }
 
-    addDecimal = (operand) => {
-        const prevOperand = this.state[operand] === ""?"0":this.state[operand];
-        if(this.checkIfDecimalExists(prevOperand)) return;
-        this.setState({[operand]: prevOperand+"."})
+    addDecimalIfPossible = (operandType) => {
+        const operand = this.props[operandType] === ""?"0":this.props[operandType];
+        if(this.checkIfDecimalExists(operand)) return;
+        this.addDecimal(operandType, operand)
+    }
+
+    addDecimal = (operandType, operand) => {
+        if (operandType == 'firstOperand') this.props.updateCalFirstOperand(operand+".")
+        else this.props.updateCalSecondOperand(operand+".");
     }
 
     checkIfDecimalExists = (operand) => {
@@ -70,48 +73,61 @@ class CalculatorScreen extends React.Component {
 
 
     onEvaluate = () => {
-        if(!this.state.currentOperator) return;
-        else if (this.state.secondOperand === "") {
-            this.setState(prevState => ({firstOperand: calculate(
-                prevState.firstOperand, prevState.firstOperand, prevState.currentOperator,
-            ), currentOperator: ""}))
+        const {firstOperand, secondOperand, currentOperator} = this.props;
+        if(this.isOnFirstOperand()) return;
+        else if (secondOperand === "") {
+            this.props.updateCalFirstOperand(calculate(
+                firstOperand, firstOperand, currentOperator
+            ));
+            this.props.updateCalOperator("");
         }
-        else 
-            this.setState(prevState => ({
-                firstOperand: calculate(
-                    prevState.firstOperand, prevState.secondOperand, prevState.currentOperator
-                ), secondOperand: "", currentOperator: ""
-            }))
+        else {
+            this.props.updateCalFirstOperand(
+                calculate(firstOperand, secondOperand, currentOperator)
+            )
+            this.props.updateCalSecondOperand("");
+            this.props.updateCalOperator("");
+        }
     }
 
 
-    onClear = () => this.setState({currentOperator: "", firstOperand: "0", secondOperand: ""})
+    onClear = () => {
+        this.props.updateCalFirstOperand("0")
+        this.props.updateCalOperator("")
+        this.props.updateCalSecondOperand("")
+    }
 
 
     onPercentagePress = () => {
-        if(!this.state.currentOperator) this.convertToPercentage('firstOperand');
-        else this.convertToPercentage('secondOperand');            
+        if(this.isOnFirstOperand())
+            this.props.updateCalFirstOperand(this.toPercentage(this.props.firstOperand));
+        else 
+            this.props.updateCalSecondOperand(this.toPercentage(this.props.secondOperand));
     }
 
-    convertToPercentage = (operand) => {
-        this.setState(prevState => ({[operand]: ""+(+prevState[operand]/100)}))
+    toPercentage = (number) => {
+        return ""+(+number/100)
     }
 
 
     onSignChange = () => {
-        const operand = (!this.state.currentOperator)?'firstOperand':'secondOperand';
-        this.changeSign(operand);
+        const [operand, actionCreator] = this.isOnFirstOperand()?
+        [this.props.firstOperand, this.props.updateCalFirstOperand]:
+        [this.props.secondOperand, this.props.updateCalSecondOperand];
+        this.changeSign(operand, actionCreator);
     }
 
-    changeSign = (operand) => {
-        if(this.state[operand] === "0") return;
-        else if (+this.state[operand] > 0) this.setState(prevState => ({[operand]: "-"+prevState[operand]}))
-        else this.setState(prevState => ({[operand]: prevState[operand].slice(1)}))
+    isOnFirstOperand = () => (!this.props.currentOperator)
+
+    changeSign = (operand, actionCreator) => {
+        if(operand === "0") return;
+        else if (+operand > 0) actionCreator("-"+operand)
+        else actionCreator(operand.slice(1))
     }
 
 
     render() {
-        const result = this.state.secondOperand?this.state.secondOperand:this.state.firstOperand;
+        const result = this.props.secondOperand?this.props.secondOperand:this.props.firstOperand;
         return (
             <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
                 <View style={{flex: 0.2}}><Text></Text></View>
@@ -172,4 +188,17 @@ const styles = StyleSheet.create({
     },
 })
 
-export default CalculatorScreen;
+
+
+const mapStateToProps = state => ({
+    firstOperand: state.calculator.firstOperand,
+    secondOperand: state.calculator.secondOperand,
+    currentOperator: state.calculator.currentOperator,
+});
+const mapActionCreatorsToProps = {
+    updateCalFirstOperand: updateCalFirstOperand,
+    updateCalSecondOperand: updateCalSecondOperand,
+    updateCalOperator: updateCalOperator
+};
+
+export default connect(mapStateToProps, mapActionCreatorsToProps)(CalculatorScreen);

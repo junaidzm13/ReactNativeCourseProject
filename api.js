@@ -29,7 +29,7 @@ export const getExchangeRates = async (source) => {
 }
 
 
-const fetchExchangeRates = async (source) => {
+export const fetchExchangeRates = async (source) => {
     // const response = await fetch(`https://v6.exchangerate-api.com/v6/9330b758f05e0e3a86ffcf62/latest/${source}`);
     // const result = await response.json();
     // console.log(result.result);

@@ -1,6 +1,5 @@
 import React from 'react';
 import {FlatList, Text, View, StyleSheet, TextInput} from 'react-native';
-import { getExchangeRates } from '../api';
 import {Row} from './Row';
 
 import {connect} from 'react-redux'
@@ -9,16 +8,15 @@ import {
     updateExSource,
     updateExTarget,
     updateExSourceToTarget,
-    updateExErrMessage
+    updateExErrMessage,
+    requestRates
 } from '../redux/actions'; 
 
 class ExchangeRatesScreen extends React.Component {
 
-    updateSourceExchangeRates = async (source) => {
+    updateSourceExchangeRates = source => {
         if (source.length === 3) {
-            const sourceExchangeRates = await getExchangeRates(source);
-            this.props.updateExRates(sourceExchangeRates);
-            this.props.updateExErrMessage('Wrong currency code');
+            this.props.requestRates(source);
             return;
         }
         this.props.updateExRates(null);
@@ -172,6 +170,7 @@ const mapActionCreatorsToProps = {
     updateExSource: updateExSource,
     updateExTarget: updateExTarget,
     updateExSourceToTarget: updateExSourceToTarget,
-    updateExErrMessage: updateExErrMessage
+    updateExErrMessage: updateExErrMessage,
+    requestRates: requestRates
 };
 export default connect(mapStateToProps, mapActionCreatorsToProps)(ExchangeRatesScreen);
